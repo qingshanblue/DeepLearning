@@ -3,4 +3,6 @@
 */data/
 *.pdf
 *.html
-*.py
+experiment3/*.py
+*.docx
+*.zip
