@@ -218,13 +218,22 @@ if __name__ == "__main__":
         persistent_workers=True,
         seed=seed,
     )
+    # 定义参数
+    num_classes = 58
+    learning_rate = 1e-3
+    weight_decay = 1e-4
+    num_epochs = 32
+    accumulation_steps = 1
+
+    # NOTE 1 ResidualNet
     from residualNet import ResidualNet
 
+    print("正在进行:训练ResidualNet模型...")
     residualNet = ResidualNet()
-    model_residualNet = residualNet.Model(nums_classes=58).to(device=device)
+    model_residualNet = residualNet.Model(num_classes=num_classes).to(device=device)
     loss_residualNet = residualNet.Loss()
     optimizer_residualNet = residualNet.Optimizer(
-        model=model_residualNet, lr=1e-3, weight_decay=1e-4
+        model=model_residualNet, lr=learning_rate, weight_decay=weight_decay
     )
     (
         train_loss_residualNet,
@@ -237,20 +246,70 @@ if __name__ == "__main__":
         optimizer=optimizer_residualNet,
         train_loader=train_loader,
         valid_loader=valid_loader,
-        num_epoches=32,
+        num_epoches=num_epochs,
         device=device,
-        accumulation_steps=1,
+        accumulation_steps=accumulation_steps,
     )
-    figure, axes = plt.subplots(1, 2, figsize=(10, 5))
-    axes[0].plot(train_loss_residualNet, label="train_loss")
-    axes[0].plot(valid_loss_residualNet, label="valid_loss")
-    axes[0].set_xlabel("epoch")
-    axes[0].set_ylabel("loss")
-    axes[0].legend()
-    axes[1].plot(train_acc_residualNet, label="train_acc")
-    axes[1].plot(valid_acc_residualNet, label="valid_acc")
-    axes[1].set_xlabel("epoch")
-    axes[1].set_ylabel("accuracy")
-    axes[1].legend()
+
+    # NOTE 2 AlexNet
+    from AlexNet import AlexNet
+
+    print("正在进行:训练AlexNet模型...")
+    model_alexNet = AlexNet.Model(
+        chns_in=3,
+        chns_mid=[96, 256, 384, 384],
+        ker_size=[11, 5, 3, 3],
+        padding=[2, 2, 1, 1],
+        stride=[4, 1, 1, 1],
+        poolKer_size=[3, 3],
+        poolStride=[2, 2],
+        feats_mid=[4096, 4096],
+        feats_out=58,
+        dropout_rate=[0.4, 0.4],
+    ).to(device)
+    loss_alexNet = AlexNet.Loss()
+    optimizer_alexNet = AlexNet.Optimizer(
+        model=model_alexNet, lr=learning_rate, weight_decay=weight_decay
+    )
+    train_loss_alexNet, train_acc_alexNet, valid_loss_alexNet, valid_acc_alexNet = (
+        AlexNet.train(
+            model=model_alexNet,
+            loss=loss_alexNet,
+            optimizer=optimizer_alexNet,
+            train_loader=train_loader,
+            valid_loader=valid_loader,
+            nnum_epoches=num_epochs,
+            device=device,
+            accumulation_steps=accumulation_steps,
+        )
+    )
+
+    # 绘制结果图
+    # ResidualNet
+    figure_residualNet, axes_residualNet = plt.subplots(1, 2, figsize=(10, 5))
+    axes_residualNet[0].plot(train_loss_residualNet, label="train_loss")
+    axes_residualNet[0].plot(valid_loss_residualNet, label="valid_loss")
+    axes_residualNet[0].set_xlabel("epoch")
+    axes_residualNet[0].set_ylabel("loss")
+    axes_residualNet[0].legend()
+    axes_residualNet[1].plot(train_acc_residualNet, label="train_acc")
+    axes_residualNet[1].plot(valid_acc_residualNet, label="valid_acc")
+    axes_residualNet[1].set_xlabel("epoch")
+    axes_residualNet[1].set_ylabel("accuracy")
+    axes_residualNet[1].legend()
+    figure_residualNet.suptitle("ResidualNet Training and Validation Metrics")
+    # AlexNet
+    figure_alexNet, axes_alexNet = plt.subplots(1, 2, figsize=(10, 5))
+    axes_alexNet[0].plot(train_loss_alexNet, label="train_loss")
+    axes_alexNet[0].plot(valid_loss_alexNet, label="valid_loss")
+    axes_alexNet[0].set_xlabel("epoch")
+    axes_alexNet[0].set_ylabel("loss")
+    axes_alexNet[0].legend()
+    axes_alexNet[1].plot(train_acc_alexNet, label="train_acc")
+    axes_alexNet[1].plot(valid_acc_alexNet, label="valid_acc")
+    axes_alexNet[1].set_xlabel("epoch")
+    axes_alexNet[1].set_ylabel("accuracy")
+    axes_alexNet[1].legend()
+    figure_alexNet.suptitle("AlexNet Training and Validation Metrics")
     plt.tight_layout()
     plt.show()

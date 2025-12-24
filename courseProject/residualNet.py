@@ -30,7 +30,7 @@ class ResidualNet:
             # chns_in: int = 3,
             # chns_base: int,
             # feats_base: int,
-            nums_classes: int,
+            num_classes: int,
             # dropout_rate: float,
             # ker_size: int,
             # padding: int = 0,
@@ -40,7 +40,7 @@ class ResidualNet:
             # self.chns_in = chns_in
             # self.chns_base = chns_base
             # self.feats_base = feats_base
-            self.nums_classes = nums_classes
+            self.num_classes = num_classes
             # self.dropout_rate = dropout_rate
             # self.ker_size = ker_size
             # self.padding = padding
@@ -68,7 +68,7 @@ class ResidualNet:
                 ResidualNet.Model.ResidualBlock(512, 512),
             )
             self.pool = nn.AdaptiveAvgPool2d((1, 1))
-            self.fc = nn.Linear(512, nums_classes)
+            self.fc = nn.Linear(512, num_classes)
 
             # 权重初始化
             self._initialize_weights()
@@ -185,7 +185,7 @@ class ResidualNet:
                 desc="Eval",
                 leave=False,
                 position=1,
-                mininterval=3,
+                mininterval=1,
                 maxinterval=10,
                 smoothing=0.1,
             )
@@ -223,7 +223,7 @@ class ResidualNet:
             desc="Epochs",
             leave=True,
             position=0,
-            mininterval=3,
+            mininterval=1,
             maxinterval=10,
             smoothing=0.1,
         )
@@ -238,7 +238,7 @@ class ResidualNet:
                 desc=f"Train",
                 leave=False,
                 position=1,
-                mininterval=3,
+                mininterval=1,
                 maxinterval=10,
                 smoothing=0.1,
             )
@@ -273,9 +273,7 @@ class ResidualNet:
                 model, loss, valid_loader, device
             )
             tqdm_epoch.set_postfix_str(
-                f"epoch{epoch+1} Info:\
-                TrainLoss={train_loss:.4f} ValidLoss={valid_loss:.4f} \
-                TrainAcc={train_acc:.4f} ValidAcc={valid_acc:.4f}",
+                f"TrainLoss={train_loss:.4f} ValidLoss={valid_loss:.4f}   TrainAcc={train_acc:.4f} ValidAcc={valid_acc:.4f}",
             )
             train_loss_list.append(train_loss)
             train_acc_list.append(train_acc)
