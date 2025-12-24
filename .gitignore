@@ -6,3 +6,4 @@
 experiment3/*.py
 *.docx
 *.zip
+*.pyc

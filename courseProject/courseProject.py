@@ -21,14 +21,11 @@ import matplotlib.pyplot as plt
 
 
 class MyDataset(Dataset):
-    def __init__(self, root_dir: str, transform=None) -> None:
+    def __init__(self, root_dir: str) -> None:
         # 初始化图片和标签的csv路径
         self.root_dir = root_dir
         self.img_dir = os.path.join(self.root_dir, "images")
         self.label_path = os.path.join(self.root_dir, "annotations.csv")
-
-        # 初始化数据增强操作
-        self.transform = transform if transform is not None else transforms.ToTensor()
 
         # 初始化图片名称列表和样本(图片名称:str,编号:int)列表
         self.samples: list[tuple[str, int]] = []
@@ -43,7 +40,7 @@ class MyDataset(Dataset):
         return len(self.samples)  # 返回样本列表长度
 
     # 根据索引获取样本
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> tuple[Image.Image, torch.Tensor]:
         img_name, label = self.samples[index]
 
         # 获取图片路径并打开对应路径
@@ -54,7 +51,7 @@ class MyDataset(Dataset):
             raise IOError(f"Error opening image: {img_path}")
 
         # 执行变换
-        image = self.transform(image)
+        # image = self.transform(image)
         return image, torch.tensor(label, dtype=torch.long)
 
     # 创建自定义划分子集类，用于灵活使用transform
@@ -87,14 +84,15 @@ class MyDataset(Dataset):
         batch_size: int = 32,
         num_workers: int = 6,
         pin_memory: bool = True,
-        prefetch_factor: int = 4,
+        prefetch_factor: int = 8,
+        persistent_workers: bool = True,
         seed: int = 114514,
     ) -> tuple[DataLoader, DataLoader, DataLoader]:
         # 定义 transform
         train_transform = transforms.Compose(
             [
                 transforms.Resize(image_size),
-                transforms.RandomRotation(15),
+                transforms.RandomRotation(10),
                 # transforms.RandomHorizontalFlip,  # 因为是交通信号标志，不做水平翻转增强
                 transforms.ToTensor(),  # 图片经过 ToTensor() 后，像素值被映射到 [0,1]
                 transforms.Normalize(
@@ -170,6 +168,7 @@ class MyDataset(Dataset):
             num_workers=num_workers,
             pin_memory=pin_memory,
             prefetch_factor=prefetch_factor,
+            persistent_workers=persistent_workers,
         )
         valid_loader = DataLoader(
             valid_dataset,
@@ -178,6 +177,7 @@ class MyDataset(Dataset):
             num_workers=num_workers,
             pin_memory=pin_memory,
             prefetch_factor=prefetch_factor,
+            persistent_workers=persistent_workers,
         )
         test_loader = DataLoader(
             test_dataset,
@@ -186,6 +186,7 @@ class MyDataset(Dataset):
             num_workers=num_workers,
             pin_memory=pin_memory,
             prefetch_factor=prefetch_factor,
+            persistent_workers=persistent_workers,
         )
 
         print(
@@ -210,9 +211,46 @@ if __name__ == "__main__":
         image_size=(64, 64),
         train_proportion=0.7,
         valid_proportion=0.2,
-        batch_size=32,
-        num_workers=6,
+        batch_size=128,
+        num_workers=4,
         pin_memory=(device.type == "cuda"),
-        prefetch_factor=4,
+        prefetch_factor=2,
+        persistent_workers=True,
         seed=seed,
     )
+    from residualNet import ResidualNet
+
+    residualNet = ResidualNet()
+    model_residualNet = residualNet.Model(nums_classes=58).to(device=device)
+    loss_residualNet = residualNet.Loss()
+    optimizer_residualNet = residualNet.Optimizer(
+        model=model_residualNet, lr=1e-3, weight_decay=1e-4
+    )
+    (
+        train_loss_residualNet,
+        train_acc_residualNet,
+        valid_loss_residualNet,
+        valid_acc_residualNet,
+    ) = residualNet.train(
+        model=model_residualNet,
+        loss=loss_residualNet,
+        optimizer=optimizer_residualNet,
+        train_loader=train_loader,
+        valid_loader=valid_loader,
+        num_epoches=32,
+        device=device,
+        accumulation_steps=1,
+    )
+    figure, axes = plt.subplots(1, 2, figsize=(10, 5))
+    axes[0].plot(train_loss_residualNet, label="train_loss")
+    axes[0].plot(valid_loss_residualNet, label="valid_loss")
+    axes[0].set_xlabel("epoch")
+    axes[0].set_ylabel("loss")
+    axes[0].legend()
+    axes[1].plot(train_acc_residualNet, label="train_acc")
+    axes[1].plot(valid_acc_residualNet, label="valid_acc")
+    axes[1].set_xlabel("epoch")
+    axes[1].set_ylabel("accuracy")
+    axes[1].legend()
+    plt.tight_layout()
+    plt.show()
