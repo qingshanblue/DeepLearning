@@ -225,7 +225,7 @@ if __name__ == "__main__":
     num_epochs = 32
     accumulation_steps = 1
 
-    # NOTE 1 ResidualNet
+    # NOTE 1 ResidualNet:
     from residualNet import ResidualNet
 
     print("正在进行:训练ResidualNet模型...")
@@ -251,7 +251,7 @@ if __name__ == "__main__":
         accumulation_steps=accumulation_steps,
     )
 
-    # NOTE 2 AlexNet
+    # NOTE 2 AlexNet:
     from AlexNet import AlexNet
 
     print("正在进行:训练AlexNet模型...")
@@ -276,6 +276,36 @@ if __name__ == "__main__":
             model=model_alexNet,
             loss=loss_alexNet,
             optimizer=optimizer_alexNet,
+            train_loader=train_loader,
+            valid_loader=valid_loader,
+            nnum_epoches=num_epochs,
+            device=device,
+            accumulation_steps=accumulation_steps,
+        )
+    )
+
+    # NOTE 3 VGGNet:
+    from VGGNet import VGGNet
+
+    model_VGGNet = VGGNet.Model(
+        chns_in=3,
+        chns_base=64,
+        feats_base=1024,
+        dropout_rate=0.5,
+        ker_size=3,
+        nums_classes=num_classes,
+        padding=1,
+        stride=1,
+    ).to(device)
+    loss_VGGNet = VGGNet.Loss()
+    optimizer_VGGNet = VGGNet.Optimizer(
+        model=model_VGGNet, lr=learning_rate, weight_decay=weight_decay
+    )
+    train_loss_VGGNet, train_acc_VGGNet, valid_loss_VGGNet, valid_acc_VGGNet = (
+        VGGNet.train(
+            model=model_VGGNet,
+            loss=loss_VGGNet,
+            optimizer=optimizer_VGGNet,
             train_loader=train_loader,
             valid_loader=valid_loader,
             nnum_epoches=num_epochs,
@@ -311,5 +341,18 @@ if __name__ == "__main__":
     axes_alexNet[1].set_ylabel("accuracy")
     axes_alexNet[1].legend()
     figure_alexNet.suptitle("AlexNet Training and Validation Metrics")
+    # VGGNet
+    figure_VGGNet, axes_VGGNet = plt.subplots(1, 2, figsize=(10, 5))
+    axes_VGGNet[0].plot(train_loss_VGGNet, label="train_loss")
+    axes_VGGNet[0].plot(valid_loss_VGGNet, label="valid_loss")
+    axes_VGGNet[0].set_xlabel("epoch")
+    axes_VGGNet[0].set_ylabel("loss")
+    axes_VGGNet[0].legend()
+    axes_VGGNet[1].plot(train_acc_VGGNet, label="train_acc")
+    axes_VGGNet[1].plot(valid_acc_VGGNet, label="valid_acc")
+    axes_VGGNet[1].set_xlabel("epoch")
+    axes_VGGNet[1].set_ylabel("accuracy")
+    axes_VGGNet[1].legend()
+    figure_VGGNet.suptitle("VGGNet Training and Validation Metrics")
     plt.tight_layout()
     plt.show()
