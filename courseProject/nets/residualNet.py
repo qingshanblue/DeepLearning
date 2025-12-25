@@ -6,16 +6,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+# 用户实现
+from nets.net import Net
+
 
 # ResidualNet
-class ResidualNet:
-    class Model(nn.Module):
+class ResidualNet(Net):
+    class Model(Net.Model):
         def __init__(
             self,
             # chns_in: int = 3,
             # chns_base: int,
             # feats_base: int,
-            num_classes: int,
+            num_classes: int = 58,
             # dropout_rate: float,
             # ker_size: int,
             # padding: int = 0,
@@ -130,7 +133,7 @@ class ResidualNet:
                 out = self.relu(out)
                 return out
 
-    class Loss(nn.Module):
+    class Loss(Net.Loss):
         def __init__(self) -> None:
             super().__init__()
             self.criterion = nn.CrossEntropyLoss()
@@ -141,11 +144,11 @@ class ResidualNet:
         def __call__(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
             return self.calc(y_pred, y_true)
 
-    class Optimizer(nn.Module):
+    class Optimizer(Net.Optimizer):
         def __init__(
             self, model: ResidualNet.Model, lr: float = 0.01, weight_decay: float = 0.01
         ) -> None:
-            super().__init__()
+            super().__init__(model=model, lr=lr, weight_decay=weight_decay)
             self.optimizer = optim.AdamW(
                 model.parameters(), lr, weight_decay=weight_decay
             )
@@ -154,4 +157,4 @@ class ResidualNet:
             self.optimizer.step()
 
         def zero_grad(self, set_to_none: bool = False) -> None:
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=set_to_none)

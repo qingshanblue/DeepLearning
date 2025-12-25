@@ -3,9 +3,6 @@ from __future__ import annotations
 
 # 主要计算
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
 import numpy as np
 
 # 数据加载
@@ -16,15 +13,8 @@ from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import StratifiedShuffleSplit
 
-# 其他辅助
-from typing import cast
-from tqdm.auto import tqdm
-import matplotlib.pyplot as plt
 
-# 用户实现
-
-
-class MyDataset(Dataset):
+class MyDataLoader(Dataset):
     def __init__(self, root_dir: str) -> None:
         # 初始化图片和标签的csv路径
         self.root_dir = root_dir
@@ -52,7 +42,7 @@ class MyDataset(Dataset):
         try:
             image = Image.open(img_path).convert("RGB")
         except:
-            raise IOError(f"Error opening image: {img_path}")
+            raise IOError(f"打开图片错误: {img_path}")
 
         # 执行变换
         # image = self.transform(image)
@@ -148,17 +138,17 @@ class MyDataset(Dataset):
         )
 
         # 创建子集
-        train_dataset = MyDataset.TransformSubset(
+        train_dataset = MyDataLoader.TransformSubset(
             full_dataset,
             train_idx,
             transform=train_transform,
         )
-        valid_dataset = MyDataset.TransformSubset(
+        valid_dataset = MyDataLoader.TransformSubset(
             full_dataset,
             valid_idx,
             transform=validTest_transform,
         )
-        test_dataset = MyDataset.TransformSubset(
+        test_dataset = MyDataLoader.TransformSubset(
             full_dataset,
             test_idx,
             transform=validTest_transform,

@@ -2,8 +2,55 @@
 import matplotlib.pyplot as plt
 
 # 用户实现
-from tools.configurator import MyParams
-from tools.trainer import train_residualNet, train_alexNet, train_VGGNet
+from tools.configurator import Configurator
+from tools.trainer import run_train
+from tools.evaluator import run_test
+from nets.residualNet import ResidualNet
+from nets.AlexNet import AlexNet
+from nets.VGGNet import VGGNet
+
+
+def go_residualNet() -> None:
+    residual = ResidualNet(configurator=configurator)
+    run_train(
+        net=residual,
+        configurator=configurator,
+        model_name="residualNet",
+    )
+    run_test(
+        net=residual,
+        configurator=configurator,
+        model_name="residualNet",
+    )
+
+
+def go_alexNet() -> None:
+    alexNet = AlexNet(configurator=configurator)
+    run_train(
+        net=alexNet,
+        configurator=configurator,
+        model_name="alexNet",
+    )
+    run_test(
+        net=alexNet,
+        configurator=configurator,
+        model_name="alexNet",
+    )
+
+
+def go_vggNet() -> None:
+    vggNet = VGGNet(configurator=configurator)
+    run_train(
+        net=vggNet,
+        configurator=configurator,
+        model_name="vggNet",
+    )
+    run_test(
+        net=vggNet,
+        configurator=configurator,
+        model_name="vggNet",
+    )
+
 
 # 程序入口，主函数：
 if __name__ == "__main__":
@@ -23,7 +70,6 @@ if __name__ == "__main__":
             if value == "0":
                 mode.clear()
                 mode.append(value)
-                break
             elif value in ["1", "2", "3"]:
                 if value not in mode:  # 防止重复训练同一模型
                     mode.append(value)
@@ -38,8 +84,8 @@ if __name__ == "__main__":
             print("输入的字符无效")
         print(f"您选择了模式 {mode}")
 
-    # 训练模型
-    params = MyParams(
+    # 训练、评估模型
+    configurator = Configurator(
         num_classes=58,
         learning_rate=1e-3,
         weight_decay=1e-4,
@@ -50,16 +96,16 @@ if __name__ == "__main__":
     for m in mode:
         match m:
             case "0":
-                train_residualNet(params=params)
-                train_alexNet(params=params)
-                train_VGGNet(params=params)
+                go_residualNet()
+                go_alexNet()
+                go_vggNet()
                 break
             case "1":
-                train_residualNet(params=params)
+                go_residualNet()
             case "2":
-                train_alexNet(params=params)
+                go_alexNet()
             case "3":
-                train_VGGNet(params=params)
+                go_vggNet()
     # 绘制结果图
     if mode:
         plt.tight_layout()

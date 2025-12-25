@@ -6,25 +6,28 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+# 用户实现
+from nets.net import Net
 
-class VGGNet:
-    class Model(nn.Module):
+
+class VGGNet(Net):
+    class Model(Net.Model):
         def __init__(
             self,
-            chns_in: int,
-            chns_base: int,
-            feats_base: int,
-            nums_classes: int,
-            dropout_rate: float,
-            ker_size: int,
-            padding: int = 0,
+            chns_in: int = 3,
+            chns_base: int = 64,
+            feats_base: int = 1024,
+            dropout_rate: float = 0.5,
+            ker_size: int = 3,
+            num_classes: int = 58,
+            padding: int = 1,
             stride: int = 1,
         ) -> None:
             super().__init__()
             self.chns_in = chns_in
             self.chns_base = chns_base
             self.feats_base = feats_base
-            self.nums_classes = nums_classes
+            self.num_classes = num_classes
             self.dropout_rate = dropout_rate
             self.ker_size = ker_size
             self.padding = padding
@@ -89,7 +92,7 @@ class VGGNet:
                 # nn.ReLU(inplace=True),
                 # nn.Dropout(p=self.dropout_rate),
                 # fc3
-                nn.Linear(self.feats_base, self.nums_classes),
+                nn.Linear(self.feats_base, self.num_classes),
             )
             self._initialize_weights()
 
@@ -115,7 +118,7 @@ class VGGNet:
             X = self.fc(X)
             return X
 
-    class Loss(nn.Module):
+    class Loss(Net.Loss):
         def __init__(self) -> None:
             super().__init__()
             self.criterion = nn.CrossEntropyLoss()
@@ -126,11 +129,11 @@ class VGGNet:
         def __call__(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
             return self.calc(y_pred, y_true)
 
-    class Optimizer(nn.Module):
+    class Optimizer(Net.Optimizer):
         def __init__(
             self, model: VGGNet.Model, lr: float = 0.01, weight_decay: float = 0.01
         ) -> None:
-            super().__init__()
+            super().__init__(model=model, lr=lr, weight_decay=weight_decay)
             self.optimizer = optim.AdamW(
                 model.parameters(), lr, weight_decay=weight_decay
             )
@@ -139,4 +142,4 @@ class VGGNet:
             self.optimizer.step()
 
         def zero_grad(self, set_to_none: bool = False) -> None:
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=set_to_none)

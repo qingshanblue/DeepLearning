@@ -6,22 +6,25 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+# 用户实现
+from nets.net import Net
+
 
 # AlexNet
-class AlexNet:
-    class Model(nn.Module):
+class AlexNet(Net):
+    class Model(Net.Model):
         def __init__(
             self,
-            chns_in: int,
-            chns_mid: list[int],
-            ker_size: list[int],
-            padding: list[int],
-            stride: list[int],
-            poolKer_size: list[int],
-            poolStride: list[int],
-            feats_mid: list[int],
-            feats_out: int,
-            dropout_rate: list[float],
+            chns_in: int = 3,
+            chns_mid: list[int] = [96, 256, 384, 384],
+            ker_size: list[int] = [11, 5, 3, 3],
+            padding: list[int] = [2, 2, 1, 1],
+            stride: list[int] = [4, 1, 1, 1],
+            poolKer_size: list[int] = [3, 3],
+            poolStride: list[int] = [2, 2],
+            feats_mid: list[int] = [4096, 4096],
+            feats_out: int = 58,
+            dropout_rate: list[float] = [0.4, 0.4],
         ) -> None:
             super().__init__()
             self.chns_in = chns_in
@@ -120,7 +123,7 @@ class AlexNet:
             X = self.fc(X)
             return X
 
-    class Loss(nn.Module):
+    class Loss(Net.Loss):
         def __init__(self) -> None:
             super().__init__()
             self.criterion = nn.CrossEntropyLoss()
@@ -131,11 +134,11 @@ class AlexNet:
         def __call__(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
             return self.calc(y_pred, y_true)
 
-    class Optimizer(nn.Module):
+    class Optimizer(Net.Optimizer):
         def __init__(
             self, model: AlexNet.Model, lr: float = 0.01, weight_decay: float = 0.01
         ) -> None:
-            super().__init__()
+            super().__init__(model=model, lr=lr, weight_decay=weight_decay)
             self.optimizer = optim.AdamW(
                 model.parameters(), lr, weight_decay=weight_decay
             )
@@ -144,4 +147,4 @@ class AlexNet:
             self.optimizer.step()
 
         def zero_grad(self, set_to_none: bool = False) -> None:
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=set_to_none)

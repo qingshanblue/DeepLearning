@@ -3,29 +3,12 @@ from __future__ import annotations
 
 # 主要计算
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import numpy as np
-
-# 数据加载
-import os
-import csv
-from PIL import Image
-from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
-from sklearn.model_selection import StratifiedShuffleSplit
-
-# 其他辅助
-from typing import cast
-from tqdm.auto import tqdm
-import matplotlib.pyplot as plt
 
 # 用户实现
-from dataloader import MyDataset
+from tools.dataloader import MyDataLoader
 
 
-class MyParams:
+class Configurator:
     def __init__(
         self,
         num_classes: int = 58,
@@ -58,7 +41,7 @@ class MyParams:
         num_workers = 6
         prefetch_factor = 2
         # 加载数据
-        chinaTrafficSignData = MyDataset(root_dir=root_dir)
+        chinaTrafficSignData = MyDataLoader(root_dir=root_dir)
         self.train_loader, self.valid_loader, self.test_loader = (
             chinaTrafficSignData.getDataLoaders(
                 image_size=images_size,
