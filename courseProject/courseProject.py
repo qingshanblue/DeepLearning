@@ -1,358 +1,66 @@
-# 主要计算
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-import pandas as pd
-
-# 数据加载
-import os
-import csv
-from PIL import Image
-from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
-
-# from sklearn.model_selection import StratifiedShuffleSplit
-
 # 其他辅助
-from typing import cast
-import tqdm.auto as tqdm
 import matplotlib.pyplot as plt
 
+# 用户实现
+from tools.configurator import MyParams
+from tools.trainer import train_residualNet, train_alexNet, train_VGGNet
 
-class MyDataset(Dataset):
-    def __init__(self, root_dir: str) -> None:
-        # 初始化图片和标签的csv路径
-        self.root_dir = root_dir
-        self.img_dir = os.path.join(self.root_dir, "images")
-        self.label_path = os.path.join(self.root_dir, "annotations.csv")
-
-        # 初始化图片名称列表和样本(图片名称:str,编号:int)列表
-        self.samples: list[tuple[str, int]] = []
-        with open(self.label_path, newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                file_name = row["file_name"]
-                label = int(row["category"])
-                self.samples.append((file_name, label))
-
-    def __len__(self) -> int:
-        return len(self.samples)  # 返回样本列表长度
-
-    # 根据索引获取样本
-    def __getitem__(self, index: int) -> tuple[Image.Image, torch.Tensor]:
-        img_name, label = self.samples[index]
-
-        # 获取图片路径并打开对应路径
-        img_path = os.path.join(self.img_dir, img_name)
-        try:
-            image = Image.open(img_path).convert("RGB")
-        except:
-            raise IOError(f"Error opening image: {img_path}")
-
-        # 执行变换
-        # image = self.transform(image)
-        return image, torch.tensor(label, dtype=torch.long)
-
-    # 创建自定义划分子集类，用于灵活使用transform
-    class TransformSubset(Dataset):
-        def __init__(
-            self,
-            dataset: Dataset,
-            indices: list[int],
-            transform: transforms.Compose | None = None,
-        ) -> None:
-            self.dataset = dataset
-            self.indices = indices
-            self.transform = transform
-
-        def __len__(self) -> int:
-            return len(self.indices)
-
-        def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor]:
-            real_idx = self.indices[idx]
-            image, label = self.dataset[real_idx]
-            if self.transform:
-                image = self.transform(image)
-            return image, label
-
-    def getDataLoaders(
-        self,
-        image_size: tuple[int, int] = (64, 64),
-        train_proportion: float = 0.7,
-        valid_proportion: float = 0.2,
-        batch_size: int = 32,
-        num_workers: int = 6,
-        pin_memory: bool = True,
-        prefetch_factor: int = 8,
-        persistent_workers: bool = True,
-        seed: int = 114514,
-    ) -> tuple[DataLoader, DataLoader, DataLoader]:
-        # 定义 transform
-        train_transform = transforms.Compose(
-            [
-                transforms.Resize(image_size),
-                transforms.RandomRotation(10),
-                # transforms.RandomHorizontalFlip,  # 因为是交通信号标志，不做水平翻转增强
-                transforms.ToTensor(),  # 图片经过 ToTensor() 后，像素值被映射到 [0,1]
-                transforms.Normalize(
-                    mean=[0.5] * 3, std=[0.5] * 3
-                ),  # 归一化:output = (input-mean)/std;把数据分布中心化（均值变为 0);把数据方差缩放到相近尺度;有利于梯度下降收敛快、稳定
-            ]
-        )
-        validTest_transform = transforms.Compose(
-            [
-                transforms.Resize(image_size),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5] * 3, std=[0.5] * 3),  # 同上
-            ]
-        )
-
-        # 计算子集索引
-        full_dataset = self
-        # 0:准备索引和标签
-        indices = np.arange(len(full_dataset))
-        # labels = np.array(
-        #     [label for _, label in full_dataset.samples]
-        # )
-        # 因为数据集中标签9的类别只有1个数据，无法使用分层抽样，所以使用随机抽样
-        # # 0
-        # # 1：full -> train + temp
-        # sss1 = StratifiedShuffleSplit(
-        #     n_splits=1, test_size=(1 - train_proportion), random_state=seed
-        # )
-        # train_idx, temp_idx = next(sss1.split(indices, labels))
-        # # 2：temp -> valid + test
-        # temp_labels = labels[temp_idx]
-        # temp_valid_size = valid_proportion / (1 - train_proportion)
-        # sss2 = StratifiedShuffleSplit(
-        #     n_splits=1, test_size=(1 - temp_valid_size), random_state=seed
-        # )
-        # valid_idx, test_idx = next(sss2.split(temp_idx, temp_labels))
-        np.random.seed(seed)
-        np.random.shuffle(indices)
-        train_idx = list(indices[: int(len(indices) * train_proportion)])
-        valid_idx = list(
-            indices[
-                int(len(indices) * train_proportion) : int(
-                    len(indices) * (train_proportion + valid_proportion)
-                )
-            ]
-        )
-        test_idx = list(
-            indices[int(len(indices) * (train_proportion + valid_proportion)) :]
-        )
-
-        # 创建子集
-        train_dataset = MyDataset.TransformSubset(
-            full_dataset,
-            train_idx,
-            transform=train_transform,
-        )
-        valid_dataset = MyDataset.TransformSubset(
-            full_dataset,
-            valid_idx,
-            transform=validTest_transform,
-        )
-        test_dataset = MyDataset.TransformSubset(
-            full_dataset,
-            test_idx,
-            transform=validTest_transform,
-        )
-
-        # 创建数据迭代器对象
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-            prefetch_factor=prefetch_factor,
-            persistent_workers=persistent_workers,
-        )
-        valid_loader = DataLoader(
-            valid_dataset,
-            batch_size=batch_size,
-            shuffle=False,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-            prefetch_factor=prefetch_factor,
-            persistent_workers=persistent_workers,
-        )
-        test_loader = DataLoader(
-            test_dataset,
-            batch_size=batch_size,
-            shuffle=False,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-            prefetch_factor=prefetch_factor,
-            persistent_workers=persistent_workers,
-        )
-
-        print(
-            f"总数据数：{len(full_dataset)}, 训练集大小：{len(train_dataset)}, 验证集大小：{len(valid_dataset)}, 测试集大小：{len(test_dataset)}"
-        )
-
-        return train_loader, valid_loader, test_loader
-
-
+# 程序入口，主函数：
 if __name__ == "__main__":
-    # 初始化随机种子，保证每次运行代码时数据集的划分一致
-    seed = 114514
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        torch.cuda.manual_seed(seed)
-    else:
-        device = torch.device("cpu")
-    # 加载数据
-    chinaTrafficSignData = MyDataset(root_dir="./courseProject/data")
-    train_loader, valid_loader, test_loader = chinaTrafficSignData.getDataLoaders(
-        image_size=(64, 64),
-        train_proportion=0.7,
-        valid_proportion=0.2,
-        batch_size=128,
-        num_workers=4,
-        pin_memory=(device.type == "cuda"),
-        prefetch_factor=2,
-        persistent_workers=True,
-        seed=seed,
+    mode = []
+    # 交互：选择执行的操作
+    print(
+        f"请输入想要执行的操作:\n\
+        可多次输入,y确认,n取消,大小写不限\n\
+        0: 执行所有训练\n\
+        1: 训练ResidualNet\n\
+        2: 训练AlexNet\n\
+        3: 训练VGGNet"
     )
-    # 定义参数
-    num_classes = 58
-    learning_rate = 1e-3
-    weight_decay = 1e-4
-    num_epochs = 32
-    accumulation_steps = 1
+    while True:
+        try:
+            value = input("请输入：").strip()
+            if value == "0":
+                mode.clear()
+                mode.append(value)
+                break
+            elif value in ["1", "2", "3"]:
+                if value not in mode:  # 防止重复训练同一模型
+                    mode.append(value)
+            elif value in ["N", "n"]:
+                mode.clear()
+                break
+            elif value in ["Y", "y"]:
+                break
+            else:
+                print("输入超出范围")
+        except:
+            print("输入的字符无效")
+        print(f"您选择了模式 {mode}")
 
-    # NOTE 1 ResidualNet:
-    from residualNet import ResidualNet
-
-    print("正在进行:训练ResidualNet模型...")
-    residualNet = ResidualNet()
-    model_residualNet = residualNet.Model(num_classes=num_classes).to(device=device)
-    loss_residualNet = residualNet.Loss()
-    optimizer_residualNet = residualNet.Optimizer(
-        model=model_residualNet, lr=learning_rate, weight_decay=weight_decay
+    # 训练模型
+    params = MyParams(
+        num_classes=58,
+        learning_rate=1e-3,
+        weight_decay=1e-4,
+        num_epochs=32,
+        accumulation_steps=1,
+        seed=114514,
     )
-    (
-        train_loss_residualNet,
-        train_acc_residualNet,
-        valid_loss_residualNet,
-        valid_acc_residualNet,
-    ) = residualNet.train(
-        model=model_residualNet,
-        loss=loss_residualNet,
-        optimizer=optimizer_residualNet,
-        train_loader=train_loader,
-        valid_loader=valid_loader,
-        num_epoches=num_epochs,
-        device=device,
-        accumulation_steps=accumulation_steps,
-    )
-
-    # NOTE 2 AlexNet:
-    from AlexNet import AlexNet
-
-    print("正在进行:训练AlexNet模型...")
-    model_alexNet = AlexNet.Model(
-        chns_in=3,
-        chns_mid=[96, 256, 384, 384],
-        ker_size=[11, 5, 3, 3],
-        padding=[2, 2, 1, 1],
-        stride=[4, 1, 1, 1],
-        poolKer_size=[3, 3],
-        poolStride=[2, 2],
-        feats_mid=[4096, 4096],
-        feats_out=58,
-        dropout_rate=[0.4, 0.4],
-    ).to(device)
-    loss_alexNet = AlexNet.Loss()
-    optimizer_alexNet = AlexNet.Optimizer(
-        model=model_alexNet, lr=learning_rate, weight_decay=weight_decay
-    )
-    train_loss_alexNet, train_acc_alexNet, valid_loss_alexNet, valid_acc_alexNet = (
-        AlexNet.train(
-            model=model_alexNet,
-            loss=loss_alexNet,
-            optimizer=optimizer_alexNet,
-            train_loader=train_loader,
-            valid_loader=valid_loader,
-            nnum_epoches=num_epochs,
-            device=device,
-            accumulation_steps=accumulation_steps,
-        )
-    )
-
-    # NOTE 3 VGGNet:
-    from VGGNet import VGGNet
-
-    model_VGGNet = VGGNet.Model(
-        chns_in=3,
-        chns_base=64,
-        feats_base=1024,
-        dropout_rate=0.5,
-        ker_size=3,
-        nums_classes=num_classes,
-        padding=1,
-        stride=1,
-    ).to(device)
-    loss_VGGNet = VGGNet.Loss()
-    optimizer_VGGNet = VGGNet.Optimizer(
-        model=model_VGGNet, lr=learning_rate, weight_decay=weight_decay
-    )
-    train_loss_VGGNet, train_acc_VGGNet, valid_loss_VGGNet, valid_acc_VGGNet = (
-        VGGNet.train(
-            model=model_VGGNet,
-            loss=loss_VGGNet,
-            optimizer=optimizer_VGGNet,
-            train_loader=train_loader,
-            valid_loader=valid_loader,
-            nnum_epoches=num_epochs,
-            device=device,
-            accumulation_steps=accumulation_steps,
-        )
-    )
-
+    for m in mode:
+        match m:
+            case "0":
+                train_residualNet(params=params)
+                train_alexNet(params=params)
+                train_VGGNet(params=params)
+                break
+            case "1":
+                train_residualNet(params=params)
+            case "2":
+                train_alexNet(params=params)
+            case "3":
+                train_VGGNet(params=params)
     # 绘制结果图
-    # ResidualNet
-    figure_residualNet, axes_residualNet = plt.subplots(1, 2, figsize=(10, 5))
-    axes_residualNet[0].plot(train_loss_residualNet, label="train_loss")
-    axes_residualNet[0].plot(valid_loss_residualNet, label="valid_loss")
-    axes_residualNet[0].set_xlabel("epoch")
-    axes_residualNet[0].set_ylabel("loss")
-    axes_residualNet[0].legend()
-    axes_residualNet[1].plot(train_acc_residualNet, label="train_acc")
-    axes_residualNet[1].plot(valid_acc_residualNet, label="valid_acc")
-    axes_residualNet[1].set_xlabel("epoch")
-    axes_residualNet[1].set_ylabel("accuracy")
-    axes_residualNet[1].legend()
-    figure_residualNet.suptitle("ResidualNet Training and Validation Metrics")
-    # AlexNet
-    figure_alexNet, axes_alexNet = plt.subplots(1, 2, figsize=(10, 5))
-    axes_alexNet[0].plot(train_loss_alexNet, label="train_loss")
-    axes_alexNet[0].plot(valid_loss_alexNet, label="valid_loss")
-    axes_alexNet[0].set_xlabel("epoch")
-    axes_alexNet[0].set_ylabel("loss")
-    axes_alexNet[0].legend()
-    axes_alexNet[1].plot(train_acc_alexNet, label="train_acc")
-    axes_alexNet[1].plot(valid_acc_alexNet, label="valid_acc")
-    axes_alexNet[1].set_xlabel("epoch")
-    axes_alexNet[1].set_ylabel("accuracy")
-    axes_alexNet[1].legend()
-    figure_alexNet.suptitle("AlexNet Training and Validation Metrics")
-    # VGGNet
-    figure_VGGNet, axes_VGGNet = plt.subplots(1, 2, figsize=(10, 5))
-    axes_VGGNet[0].plot(train_loss_VGGNet, label="train_loss")
-    axes_VGGNet[0].plot(valid_loss_VGGNet, label="valid_loss")
-    axes_VGGNet[0].set_xlabel("epoch")
-    axes_VGGNet[0].set_ylabel("loss")
-    axes_VGGNet[0].legend()
-    axes_VGGNet[1].plot(train_acc_VGGNet, label="train_acc")
-    axes_VGGNet[1].plot(valid_acc_VGGNet, label="valid_acc")
-    axes_VGGNet[1].set_xlabel("epoch")
-    axes_VGGNet[1].set_ylabel("accuracy")
-    axes_VGGNet[1].legend()
-    figure_VGGNet.suptitle("VGGNet Training and Validation Metrics")
-    plt.tight_layout()
-    plt.show()
+    if mode:
+        plt.tight_layout()
+        plt.show()
