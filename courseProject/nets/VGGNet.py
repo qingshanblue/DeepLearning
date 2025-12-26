@@ -15,84 +15,53 @@ class VGGNet(Net):
         def __init__(
             self,
             chns_in: int = 3,
-            chns_base: int = 64,
-            feats_base: int = 1024,
-            dropout_rate: float = 0.5,
-            ker_size: int = 3,
             num_classes: int = 58,
-            padding: int = 1,
-            stride: int = 1,
+            # VGG 经典的通道增长序列: 64 -> 128 -> 256 -> 512
+            chns: list[int] = [64, 128, 256, 512],
+            feats_mid: int = 4096,  # 保持和 AlexNet 一致的 4096 维
+            dropout_rate: float = 0.5,
         ) -> None:
             super().__init__()
-            self.chns_in = chns_in
-            self.chns_base = chns_base
-            self.feats_base = feats_base
-            self.num_classes = num_classes
-            self.dropout_rate = dropout_rate
-            self.ker_size = ker_size
-            self.padding = padding
-            self.stride = stride
 
             self.conv = nn.Sequential(
-                # cov1
-                nn.Conv2d(
-                    chns_in,
-                    chns_base * 1,
-                    kernel_size=ker_size,
-                    padding=self.padding,
-                    stride=self.stride,
-                ),
-                nn.BatchNorm2d(chns_base * 1),
+                # Block 1: 64通道 (2层卷积)
+                nn.Conv2d(chns_in, chns[0], 3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(chns[0], chns[0], 3, padding=1),
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d(2, 2),
-                # cov2
-                nn.Conv2d(
-                    chns_base * 1,
-                    chns_base * 2,
-                    kernel_size=ker_size,
-                    padding=self.padding,
-                    stride=self.stride,
-                ),
-                nn.BatchNorm2d(chns_base * 2),
+                # Block 2: 128通道 (2层卷积)
+                nn.Conv2d(chns[0], chns[1], 3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(chns[1], chns[1], 3, padding=1),
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d(2, 2),
-                # conv3
-                nn.Conv2d(
-                    chns_base * 2,
-                    chns_base * 4,
-                    kernel_size=ker_size,
-                    padding=self.padding,
-                    stride=self.stride,
-                ),
-                nn.BatchNorm2d(chns_base * 4),
+                # Block 3: 256通道 (2层卷积)
+                nn.Conv2d(chns[1], chns[2], 3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(chns[2], chns[2], 3, padding=1),
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d(2, 2),
-                # conv4
-                nn.Conv2d(
-                    chns_base * 4,
-                    chns_base * 8,
-                    kernel_size=ker_size,
-                    padding=self.padding,
-                    stride=self.stride,
-                ),
-                nn.BatchNorm2d(chns_base * 8),
+                # Block 4: 512通道 (2层卷积)
+                nn.Conv2d(chns[2], chns[3], 3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(chns[3], chns[3], 3, padding=1),
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d(2, 2),
             )
-            self.pool = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)))
+
+            # 统一使用 7x7 或 6x6 的 AdaptivePool，确保能接上巨型 FC 层
+            self.pool = nn.AdaptiveAvgPool2d((7, 7))
+
             self.fc = nn.Sequential(
-                # fc1
-                nn.Linear(self.chns_base * 8, self.feats_base),
-                # nn.BatchNorm1d(self.feats_base),
+                # 512 * 7 * 7 = 25088 维输入
+                nn.Linear(chns[3] * 7 * 7, feats_mid),
                 nn.ReLU(inplace=True),
-                nn.Dropout(p=self.dropout_rate),
-                # # fc2
-                # nn.Linear(self.feats_base, self.feats_base),
-                # nn.BatchNorm1d(self.feats_base),
-                # nn.ReLU(inplace=True),
-                # nn.Dropout(p=self.dropout_rate),
-                # fc3
-                nn.Linear(self.feats_base, self.num_classes),
+                nn.Dropout(p=dropout_rate),
+                nn.Linear(feats_mid, feats_mid),
+                nn.ReLU(inplace=True),
+                nn.Dropout(p=dropout_rate),
+                nn.Linear(feats_mid, num_classes),
             )
             self._initialize_weights()
 
