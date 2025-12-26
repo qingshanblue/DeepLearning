@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import numpy as np
+import pandas as pd
 
 # 数据加载
 import os
@@ -179,7 +180,10 @@ def run_test(net: Net, configurator: Configurator) -> dict:
     )
     # 绘图
     figure, axes = plt.subplots(1, 2, figsize=(20, 7))
-    figure.suptitle(f"Performance Evaluation: {net.name}", fontsize=16)
+    figure.suptitle(
+        f"Performance Test: {net.name}\nmAP:{mAP:.4f}, loss:{loss:.4f}, acc:{acc:.4f}",
+        fontsize=16,
+    )
     # 绘制 PR 曲线 - 展示模型在不同召回率下的精确率表现
     axes[0].plot(recall, precision, label=f"mAP={mAP:.4f}", color="blue")
     axes[0].set_title(f"Precision-Recall Curve", fontsize=14)

@@ -4,6 +4,7 @@ from __future__ import annotations
 # 主要计算
 import torch
 import torch.nn as nn
+import pandas as pd
 
 # 数据加载
 import os
@@ -107,6 +108,22 @@ def train(
                 f"Epoch {epoch}: 新最佳模型准确度 = {best_acc:.4f} 已保存!"
             )
     tqdm_epoch.close()
+    # 保存日志
+    os.makedirs(f"logs/{net.name}/{configurator.desc}", exist_ok=True)
+    # 保存训练历史记录到CSV文件
+    log = pd.DataFrame(
+        {
+            "epoch": range(1, len(train_loss_list) + 1),
+            "train_loss": train_loss_list,
+            "train_acc": train_acc_list,
+            "valid_loss": valid_loss_list,
+            "valid_acc": valid_acc_list,
+        }
+    )
+    log.to_csv(
+        os.path.join(f"logs/{net.name}/{configurator.desc}", "training_log.csv"),
+        index=False,
+    )
     return train_loss_list, train_acc_list, valid_loss_list, valid_acc_list
 
 

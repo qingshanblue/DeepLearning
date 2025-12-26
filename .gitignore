@@ -9,3 +9,4 @@ experiment3/*.py
 *.pyc
 *.pth
 *.png
+*.csv
