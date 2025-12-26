@@ -10,7 +10,7 @@ import torch.optim as optim
 from tools.configurator import Configurator
 
 
-# 空网络，用于类型注解：供不同网络继承，以实现训练、测试函数的抽象
+# 网络模板，用于类型注解：供不同网络继承，以实现训练、测试函数的抽象
 class Net:
     def __init__(self, configurator: Configurator):
         self.model = self.Model().to(configurator.device)

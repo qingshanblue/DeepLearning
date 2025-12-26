@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 # 用户实现
 from tools.configurator import Configurator
 from tools.trainer import run_train
-from tools.evaluator import run_test
+from tools.evaluator import run_test, visualize_results
+from nets.net import Net
 from nets.residualNet import ResidualNet
 from nets.AlexNet import AlexNet
 from nets.VGGNet import VGGNet
 
 
-def go_residualNet() -> None:
+def go_residualNet() -> Net:
     residual = ResidualNet(configurator=configurator)
     run_train(
         net=residual,
@@ -22,9 +23,10 @@ def go_residualNet() -> None:
         configurator=configurator,
         model_name="residualNet",
     )
+    return residual
 
 
-def go_alexNet() -> None:
+def go_alexNet() -> Net:
     alexNet = AlexNet(configurator=configurator)
     run_train(
         net=alexNet,
@@ -36,9 +38,10 @@ def go_alexNet() -> None:
         configurator=configurator,
         model_name="alexNet",
     )
+    return alexNet
 
 
-def go_vggNet() -> None:
+def go_vggNet() -> Net:
     vggNet = VGGNet(configurator=configurator)
     run_train(
         net=vggNet,
@@ -50,6 +53,7 @@ def go_vggNet() -> None:
         configurator=configurator,
         model_name="vggNet",
     )
+    return vggNet
 
 
 # 程序入口，主函数：
@@ -93,19 +97,22 @@ if __name__ == "__main__":
         accumulation_steps=1,
         seed=114514,
     )
+    net_list = []
     for m in mode:
         match m:
             case "0":
-                go_residualNet()
-                go_alexNet()
-                go_vggNet()
+                net_list.append(go_residualNet())
+                net_list.append(go_alexNet())
+                net_list.append(go_vggNet())
                 break
             case "1":
-                go_residualNet()
+                net_list.append(go_residualNet())
             case "2":
-                go_alexNet()
+                net_list.append(go_alexNet())
             case "3":
-                go_vggNet()
+                net_list.append(go_vggNet())
+    if net_list:
+        visualize_results(nets=net_list, configurator=configurator, num_samples=4)
     # 绘制结果图
     if mode:
         plt.tight_layout()

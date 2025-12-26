@@ -56,7 +56,7 @@ def validate(
 
 def visualize_results(
     nets: list[Net], configurator: Configurator, num_samples: int = 4
-):
+) -> None:
     """
     nets: 传入一个列表 [vgg_instance, res_instance, alex_instance]
     """
@@ -89,9 +89,6 @@ def visualize_results(
                 fontsize=9,
             )
             ax.axis("off")
-
-    plt.tight_layout()
-    plt.show()
 
 
 def test_full_performance(
@@ -139,7 +136,7 @@ def test_full_performance(
     return mAP, all_aps, precision, recall, loss, acc
 
 
-def run_test(net: Net, configurator: Configurator, model_name: str):
+def run_test(net: Net, configurator: Configurator, model_name: str) -> dict:
     # 测试测试集
     try:
         net.model.load_state_dict(
@@ -147,7 +144,7 @@ def run_test(net: Net, configurator: Configurator, model_name: str):
         )
     except FileNotFoundError:
         print("未找到最佳模型文件，请先训练模型。")
-        return
+        return {}
     mAP, APs, precision, recall, loss, acc = test_full_performance(
         net=net,
         data_loader=configurator.test_loader,
@@ -157,23 +154,27 @@ def run_test(net: Net, configurator: Configurator, model_name: str):
     # 绘图
     fig, axes = plt.subplots(1, 2, figsize=(20, 7))
     fig.suptitle(f"Performance Evaluation: {model_name}", fontsize=16)
-    # --- 第一个子图 (axes[0]): 绘制 PR 曲线 ---
+    # 绘制 PR 曲线
     axes[0].plot(recall, precision, label=f"mAP={mAP:.4f}", color="blue")
     axes[0].set_title(f"Precision-Recall Curve", fontsize=14)
     axes[0].set_xlabel("Recall")
     axes[0].set_ylabel("Precision")
     axes[0].legend(loc="lower left")
     axes[0].grid(True, linestyle="--", alpha=0.7)
-    # --- 第二个子图 (axes[1]): 绘制 APs 柱状图 ---
+    # 绘制 APs 柱状图
     classes = list(APs.keys())
     ap_values = list(APs.values())
     axes[1].bar(classes, ap_values, color="skyblue", edgecolor="navy")
     axes[1].set_title(f"Average Precision per Class", fontsize=14)
     axes[1].set_xlabel("Class ID")
     axes[1].set_ylabel("AP Score")
-    # 如果类别很多，可以适当限制横坐标显示的频率
-    axes[1].set_xticks(classes[::2])  # 每隔两个显示一个刻度，防止重叠
-    axes[1].grid(axis="y", linestyle="--", alpha=0.7)
     # 输出mAP、loss、acc
     print(f"测试集的: mAP:{mAP:.4f}, loss:{loss:.4f}, acc:{acc:.4f}")
-    return mAP, APs, precision, recall, loss, acc
+    return {
+        "mAP": mAP,
+        "APs": APs,
+        "P": precision,
+        "R": recall,
+        "loss": loss,
+        "acc": acc,
+    }

@@ -29,7 +29,7 @@ def train(
     device: torch.device,
     accumulation_steps: int,
     model_name: str = "model",  # 传入模型名称，用于保存对应的pth文件
-):
+) -> tuple[list[float], list[float], list[float], list[float]]:
     train_loss_list, train_acc_list = [], []
     valid_loss_list, valid_acc_list = [], []
     tqdm_epoch = tqdm(
@@ -103,7 +103,7 @@ def train(
     return train_loss_list, train_acc_list, valid_loss_list, valid_acc_list
 
 
-def run_train(net: Net, configurator: Configurator, model_name: str):
+def run_train(net: Net, configurator: Configurator, model_name: str) -> dict:
     print(f"正在进行:训练{model_name}模型...")
     # 训练
     (
