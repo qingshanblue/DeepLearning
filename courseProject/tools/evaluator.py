@@ -65,7 +65,7 @@ def visualize_results(
     images, labels = images[:num_samples], labels[:num_samples]
 
     # 2. 绘图设置 (行: 样本, 列: 模型数量)
-    fig, axes = plt.subplots(num_samples, len(nets), figsize=(15, 12))
+    fig, axes = plt.subplots(num_samples, len(nets), figsize=(15, 12), squeeze=False)
 
     for i in range(num_samples):
         img = images[i].permute(1, 2, 0).cpu().numpy()
@@ -152,7 +152,7 @@ def run_test(net: Net, configurator: Configurator, model_name: str) -> dict:
         num_classes=configurator.num_classes,
     )
     # 绘图
-    fig, axes = plt.subplots(1, 2, figsize=(20, 7))
+    fig, axes = plt.subplots(1, 2, figsize=(20, 7), squeeze=False)
     fig.suptitle(f"Performance Evaluation: {model_name}", fontsize=16)
     # 绘制 PR 曲线
     axes[0].plot(recall, precision, label=f"mAP={mAP:.4f}", color="blue")

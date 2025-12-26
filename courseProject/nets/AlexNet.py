@@ -47,7 +47,7 @@ class AlexNet(Net):
                     padding=self.padding[0],
                     stride=self.stride[0],
                 ),
-                nn.BatchNorm2d(chns_mid[0]),
+                # nn.BatchNorm2d(chns_mid[0]),
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d(self.poolKer_size[0], self.poolStride[0]),
                 # cov2
@@ -58,7 +58,7 @@ class AlexNet(Net):
                     padding=self.padding[1],
                     stride=self.stride[1],
                 ),
-                nn.BatchNorm2d(chns_mid[1]),
+                # nn.BatchNorm2d(chns_mid[1]),
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d(self.poolKer_size[1], self.poolStride[1]),
                 # cov3
@@ -69,7 +69,7 @@ class AlexNet(Net):
                     padding=self.padding[2],
                     stride=self.stride[2],
                 ),
-                nn.BatchNorm2d(chns_mid[2]),
+                # nn.BatchNorm2d(chns_mid[2]),
                 nn.ReLU(inplace=True),
                 # nn.MaxPool2d(self.poolKer_size[2], self.poolStride[2]),
                 # cov4
@@ -80,20 +80,20 @@ class AlexNet(Net):
                     padding=self.padding[3],
                     stride=self.stride[3],
                 ),
-                nn.BatchNorm2d(chns_mid[3]),
+                # nn.BatchNorm2d(chns_mid[3]),
                 nn.ReLU(inplace=True),
                 # nn.MaxPool2d(self.poolKer_size[3], self.poolStride[3]),
             )
-            self.pool = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)))
+            self.pool = nn.Sequential(nn.AdaptiveAvgPool2d((6, 6)))
             self.fc = nn.Sequential(
                 # fc1
-                nn.Linear(self.chns_mid[3], self.feats_mid[0]),
-                nn.BatchNorm1d(self.feats_mid[0]),
+                nn.Linear(self.chns_mid[3] * 6 * 6, self.feats_mid[0]),
+                # nn.BatchNorm1d(self.feats_mid[0]),
                 nn.ReLU(inplace=True),
                 nn.Dropout(p=self.dropout_rate[0]),
                 # fc2
                 nn.Linear(self.feats_mid[0], self.feats_mid[1]),
-                nn.BatchNorm1d(self.feats_mid[1]),
+                # nn.BatchNorm1d(self.feats_mid[1]),
                 nn.ReLU(inplace=True),
                 nn.Dropout(p=self.dropout_rate[1]),
                 # fc3

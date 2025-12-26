@@ -11,13 +11,14 @@ from nets.AlexNet import AlexNet
 from nets.VGGNet import VGGNet
 
 
-def go_residualNet() -> Net:
+def go_residualNet(configurator: Configurator, testOnly: bool = False) -> Net:
     residual = ResidualNet(configurator=configurator)
-    run_train(
-        net=residual,
-        configurator=configurator,
-        model_name="residualNet",
-    )
+    if not testOnly:
+        run_train(
+            net=residual,
+            configurator=configurator,
+            model_name="residualNet",
+        )
     run_test(
         net=residual,
         configurator=configurator,
@@ -26,13 +27,14 @@ def go_residualNet() -> Net:
     return residual
 
 
-def go_alexNet() -> Net:
+def go_alexNet(configurator: Configurator, testOnly: bool = False) -> Net:
     alexNet = AlexNet(configurator=configurator)
-    run_train(
-        net=alexNet,
-        configurator=configurator,
-        model_name="alexNet",
-    )
+    if not testOnly:
+        run_train(
+            net=alexNet,
+            configurator=configurator,
+            model_name="alexNet",
+        )
     run_test(
         net=alexNet,
         configurator=configurator,
@@ -41,13 +43,14 @@ def go_alexNet() -> Net:
     return alexNet
 
 
-def go_vggNet() -> Net:
+def go_vggNet(configurator: Configurator, testOnly: bool = False) -> Net:
     vggNet = VGGNet(configurator=configurator)
-    run_train(
-        net=vggNet,
-        configurator=configurator,
-        model_name="vggNet",
-    )
+    if not testOnly:
+        run_train(
+            net=vggNet,
+            configurator=configurator,
+            model_name="vggNet",
+        )
     run_test(
         net=vggNet,
         configurator=configurator,
@@ -62,8 +65,9 @@ if __name__ == "__main__":
     # 交互：选择执行的操作
     print(
         f"请输入想要执行的操作:\n\
-        可多次输入,y确认,n取消,大小写不限\n\
-        0: 执行所有训练\n\
+        确认:y, 取消:n\n\
+        1x:执行对应序号模型的评估\n\
+        0: 执行所有训练并评估\n\
         1: 训练ResidualNet\n\
         2: 训练AlexNet\n\
         3: 训练VGGNet"
@@ -71,15 +75,16 @@ if __name__ == "__main__":
     while True:
         try:
             value = input("请输入：").strip()
-            if value == "0":
+            if value in ["0", "10"]:
                 mode.clear()
-                mode.append(value)
-            elif value in ["1", "2", "3"]:
-                if value not in mode:  # 防止重复训练同一模型
-                    mode.append(value)
+                mode.append(int(value))
+            elif value in ["1", "2", "3", "11", "12", "13"]:
+                if (
+                    (value not in mode) and (0 not in mode) and (10 not in mode)
+                ):  # 防止重复训练同一模型
+                    mode.append(int(value))
             elif value in ["N", "n"]:
                 mode.clear()
-                break
             elif value in ["Y", "y"]:
                 break
             else:
@@ -99,18 +104,27 @@ if __name__ == "__main__":
     )
     net_list = []
     for m in mode:
+        testOnly = True if m >= 10 else False
         match m:
-            case "0":
-                net_list.append(go_residualNet())
-                net_list.append(go_alexNet())
-                net_list.append(go_vggNet())
+            case 0 | 10:
+                net_list.append(
+                    go_residualNet(configurator=configurator, testOnly=testOnly)
+                )
+                net_list.append(
+                    go_alexNet(configurator=configurator, testOnly=testOnly)
+                )
+                net_list.append(go_vggNet(configurator=configurator, testOnly=testOnly))
                 break
-            case "1":
-                net_list.append(go_residualNet())
-            case "2":
-                net_list.append(go_alexNet())
-            case "3":
-                net_list.append(go_vggNet())
+            case 1 | 11:
+                net_list.append(
+                    go_residualNet(configurator=configurator, testOnly=testOnly)
+                )
+            case 2 | 12:
+                net_list.append(
+                    go_alexNet(configurator=configurator, testOnly=testOnly)
+                )
+            case 3 | 13:
+                net_list.append(go_vggNet(configurator=configurator, testOnly=testOnly))
     if net_list:
         visualize_results(nets=net_list, configurator=configurator, num_samples=4)
     # 绘制结果图
