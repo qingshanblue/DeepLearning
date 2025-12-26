@@ -82,23 +82,24 @@ class MyDataLoader(Dataset):
         persistent_workers: bool = True,
         seed: int = 114514,
     ) -> tuple[DataLoader, DataLoader, DataLoader]:
-        # 定义 transform
+        # 定义训练集的变换策略，包含数据增强
         train_transform = transforms.Compose(
             [
                 transforms.Resize(image_size),
-                transforms.RandomRotation(10),
-                # transforms.RandomHorizontalFlip,  # 因为是交通信号标志，不做水平翻转增强
-                transforms.ToTensor(),  # 图片经过 ToTensor() 后，像素值被映射到 [0,1]
+                transforms.RandomRotation(10),  # 随机旋转增强模型泛化能力
+                # transforms.RandomHorizontalFlip,  # 交通标志具有方向性，不适合水平翻转
+                transforms.ToTensor(),  # 转换为张量并归一化到[0,1]
                 transforms.Normalize(
                     mean=[0.5] * 3, std=[0.5] * 3
-                ),  # 归一化:output = (input-mean)/std;把数据分布中心化（均值变为 0);把数据方差缩放到相近尺度;有利于梯度下降收敛快、稳定
+                ),  # 标准化处理，加速模型收敛
             ]
         )
+        # 验证和测试集使用相同的变换策略，不包含数据增强
         validTest_transform = transforms.Compose(
             [
                 transforms.Resize(image_size),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5] * 3, std=[0.5] * 3),  # 同上
+                transforms.Normalize(mean=[0.5] * 3, std=[0.5] * 3),
             ]
         )
 
@@ -123,8 +124,8 @@ class MyDataLoader(Dataset):
         #     n_splits=1, test_size=(1 - temp_valid_size), random_state=seed
         # )
         # valid_idx, test_idx = next(sss2.split(temp_idx, temp_labels))
-        np.random.seed(seed)
-        np.random.shuffle(indices)
+        np.random.seed(seed)  # 设置随机种子确保结果可复现
+        np.random.shuffle(indices)  # 随机打乱索引
         train_idx = list(indices[: int(len(indices) * train_proportion)])
         valid_idx = list(
             indices[
@@ -137,7 +138,7 @@ class MyDataLoader(Dataset):
             indices[int(len(indices) * (train_proportion + valid_proportion)) :]
         )
 
-        # 创建子集
+        # 使用TransformSubset创建三个数据集，分别应用不同的变换
         train_dataset = MyDataLoader.TransformSubset(
             full_dataset,
             train_idx,
@@ -154,20 +155,20 @@ class MyDataLoader(Dataset):
             transform=validTest_transform,
         )
 
-        # 创建数据迭代器对象
+        # 创建数据加载器，配置并行加载和内存优化参数
         train_loader = DataLoader(
             train_dataset,
             batch_size=batch_size,
-            shuffle=True,
+            shuffle=True,  # 训练集打乱顺序
             num_workers=num_workers,
-            pin_memory=pin_memory,
-            prefetch_factor=prefetch_factor,
-            persistent_workers=persistent_workers,
+            pin_memory=pin_memory,  # 固定内存，加速GPU传输
+            prefetch_factor=prefetch_factor,  # 预取数据
+            persistent_workers=persistent_workers,  # 保持worker进程
         )
         valid_loader = DataLoader(
             valid_dataset,
             batch_size=batch_size,
-            shuffle=False,
+            shuffle=False,  # 验证集保持顺序
             num_workers=num_workers,
             pin_memory=pin_memory,
             prefetch_factor=prefetch_factor,
@@ -176,7 +177,7 @@ class MyDataLoader(Dataset):
         test_loader = DataLoader(
             test_dataset,
             batch_size=batch_size,
-            shuffle=False,
+            shuffle=False,  # 测试集保持顺序
             num_workers=num_workers,
             pin_memory=pin_memory,
             prefetch_factor=prefetch_factor,

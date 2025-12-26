@@ -34,11 +34,13 @@ class ResidualNet(Net):
             # self.padding = padding
             # self.stride = stride
 
+            # 网络主干部分，用于提取基础特征
             self.stem = nn.Sequential(
                 nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(64),
                 nn.ReLU(inplace=True),
             )
+            # 四个残差块层，逐步增加通道数并减小特征图尺寸
             self.layer1 = nn.Sequential(
                 ResidualNet.Model.ResidualBlock(64, 64),
                 ResidualNet.Model.ResidualBlock(64, 64),
@@ -55,7 +57,9 @@ class ResidualNet(Net):
                 ResidualNet.Model.ResidualBlock(256, 512, stride=2),
                 ResidualNet.Model.ResidualBlock(512, 512),
             )
+            # 全局平均池化，将特征图尺寸统一为1x1
             self.pool = nn.AdaptiveAvgPool2d((1, 1))
+            # 全连接层，将特征映射到类别空间
             self.fc = nn.Linear(512, num_classes)
 
             # 权重初始化
@@ -73,17 +77,21 @@ class ResidualNet(Net):
             return x
 
         def _initialize_weights(self):
+            # 对不同类型的层采用不同的初始化策略
             for m in self.modules():
                 if isinstance(m, nn.Conv2d):
+                    # 卷积层使用Kaiming初始化，适用于ReLU激活函数
                     nn.init.kaiming_normal_(
                         m.weight, mode="fan_out", nonlinearity="relu"
                     )
                     if m.bias is not None:
                         nn.init.constant_(m.bias, 0)
                 elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
+                    # 批归一化层初始化为标准形式
                     nn.init.constant_(m.weight, 1)
                     nn.init.constant_(m.bias, 0)
                 elif isinstance(m, nn.Linear):
+                    # 全连接层使用较小方差的正态分布初始化
                     nn.init.normal_(m.weight, 0, 0.01)
                     nn.init.constant_(m.bias, 0)
 
@@ -91,6 +99,7 @@ class ResidualNet(Net):
             def __init__(self, in_channels, out_channels, stride=1):
                 super().__init__()
 
+                # 第一个卷积块：可能包含下采样（由stride控制）
                 self.conv1 = nn.Conv2d(
                     in_channels,
                     out_channels,
@@ -102,6 +111,7 @@ class ResidualNet(Net):
                 self.bn1 = nn.BatchNorm2d(out_channels)
                 self.relu = nn.ReLU(inplace=True)
 
+                # 第二个卷积块：保持特征图尺寸不变
                 self.conv2 = nn.Conv2d(
                     out_channels,
                     out_channels,
@@ -112,6 +122,7 @@ class ResidualNet(Net):
                 )
                 self.bn2 = nn.BatchNorm2d(out_channels)
 
+                # 快捷连接：当输入输出维度不匹配时进行投影变换
                 if stride != 1 or in_channels != out_channels:
                     self.shortcut = nn.Sequential(
                         nn.Conv2d(
@@ -124,11 +135,14 @@ class ResidualNet(Net):
                         nn.BatchNorm2d(out_channels),
                     )
                 else:
+                    # 维度匹配时直接恒等映射
                     self.shortcut = nn.Identity()
 
             def forward(self, x):
+                # 残差主路径
                 out = self.relu(self.bn1(self.conv1(x)))
                 out = self.bn2(self.conv2(out))
+                # 残差连接：将输入与变换后的输出相加
                 out += self.shortcut(x)
                 out = self.relu(out)
                 return out
@@ -136,6 +150,7 @@ class ResidualNet(Net):
     class Loss(Net.Loss):
         def __init__(self) -> None:
             super().__init__()
+            # 使用交叉熵损失函数处理多分类问题
             self.criterion = nn.CrossEntropyLoss()
 
         def calc(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
@@ -149,6 +164,7 @@ class ResidualNet(Net):
             self, model: ResidualNet.Model, lr: float = 0.01, weight_decay: float = 0.01
         ) -> None:
             super().__init__(model=model, lr=lr, weight_decay=weight_decay)
+            # 使用AdamW优化器，具有权重衰减和自适应学习率
             self.optimizer = optim.AdamW(
                 model.parameters(), lr, weight_decay=weight_decay
             )

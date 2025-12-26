@@ -11,52 +11,17 @@ from nets.AlexNet import AlexNet
 from nets.VGGNet import VGGNet
 
 
-def go_residualNet(configurator: Configurator, testOnly: bool = False) -> Net:
-    residual = ResidualNet(configurator=configurator)
+def TrainOrTest(net: Net, configurator: Configurator, testOnly: bool = False) -> None:
     if not testOnly:
         run_train(
-            net=residual,
+            net=net,
             configurator=configurator,
-            model_name="residualNet",
         )
+    # 无论是否训练，都执行测试流程以评估模型性能
     run_test(
-        net=residual,
+        net=net,
         configurator=configurator,
-        model_name="residualNet",
     )
-    return residual
-
-
-def go_alexNet(configurator: Configurator, testOnly: bool = False) -> Net:
-    alexNet = AlexNet(configurator=configurator)
-    if not testOnly:
-        run_train(
-            net=alexNet,
-            configurator=configurator,
-            model_name="alexNet",
-        )
-    run_test(
-        net=alexNet,
-        configurator=configurator,
-        model_name="alexNet",
-    )
-    return alexNet
-
-
-def go_vggNet(configurator: Configurator, testOnly: bool = False) -> Net:
-    vggNet = VGGNet(configurator=configurator)
-    if not testOnly:
-        run_train(
-            net=vggNet,
-            configurator=configurator,
-            model_name="vggNet",
-        )
-    run_test(
-        net=vggNet,
-        configurator=configurator,
-        model_name="vggNet",
-    )
-    return vggNet
 
 
 # 程序入口，主函数：
@@ -72,60 +37,74 @@ if __name__ == "__main__":
         2: 训练AlexNet\n\
         3: 训练VGGNet"
     )
-    while True:
+    while True:  # 多次输入配置
         try:
             value = input("请输入：").strip()
             if value in ["0", "10"]:
+                # 选择0或10时清空模式列表，确保只执行所有模型
                 mode.clear()
                 mode.append(int(value))
             elif value in ["1", "2", "3", "11", "12", "13"]:
-                if (
-                    (value not in mode) and (0 not in mode) and (10 not in mode)
-                ):  # 防止重复训练同一模型
+                # 检查是否已选择该模型或已选择全部执行模式，避免重复训练
+                if (value not in mode) and (0 not in mode) and (10 not in mode):
                     mode.append(int(value))
             elif value in ["N", "n"]:
+                # 取消选择，清空模式列表
                 mode.clear()
             elif value in ["Y", "y"]:
+                # 确认选择，退出输入循环
                 break
             else:
                 print("输入超出范围")
         except:
             print("输入的字符无效")
+        mode.sort()  # 排序以保证后面保存图片命名时一致
         print(f"您选择了模式 {mode}")
 
     # 训练、评估模型
+    # 配置训练参数，包括类别数、学习率、权重衰减等
     configurator = Configurator(
         num_classes=58,
+        image_size=(64, 64),
         learning_rate=1e-3,
         weight_decay=1e-4,
         num_epochs=32,
+        batch_size=128,
         accumulation_steps=1,
         seed=114514,
     )
+    # 创建模型，及保存使用了哪些模型的列表
     net_list = []
-    for m in mode:
+    residNet = ResidualNet(configurator=configurator)
+    alexNet = AlexNet(configurator=configurator)
+    vggNet = VGGNet(configurator=configurator)
+    for m in mode:  # 根据输入执行操作
+        # 判断是否仅评估模式（10+表示仅评估）
         testOnly = True if m >= 10 else False
         match m:
             case 0 | 10:
-                net_list.append(
-                    go_residualNet(configurator=configurator, testOnly=testOnly)
-                )
-                net_list.append(
-                    go_alexNet(configurator=configurator, testOnly=testOnly)
-                )
-                net_list.append(go_vggNet(configurator=configurator, testOnly=testOnly))
+                # 执行所有模型的训练或评估
+                net_list.append(residNet)
+                TrainOrTest(net=residNet, configurator=configurator, testOnly=testOnly)
+                net_list.append(alexNet)
+                TrainOrTest(net=alexNet, configurator=configurator, testOnly=testOnly)
+                net_list.append(vggNet)
+                TrainOrTest(net=vggNet, configurator=configurator, testOnly=testOnly)
                 break
             case 1 | 11:
-                net_list.append(
-                    go_residualNet(configurator=configurator, testOnly=testOnly)
-                )
+                # 执行ResidualNet的训练或评估
+                net_list.append(residNet)
+                TrainOrTest(net=residNet, configurator=configurator, testOnly=testOnly)
             case 2 | 12:
-                net_list.append(
-                    go_alexNet(configurator=configurator, testOnly=testOnly)
-                )
+                # 执行AlexNet的训练或评估
+                net_list.append(alexNet)
+                TrainOrTest(net=alexNet, configurator=configurator, testOnly=testOnly)
             case 3 | 13:
-                net_list.append(go_vggNet(configurator=configurator, testOnly=testOnly))
+                # 执行VGGNet的训练或评估
+                net_list.append(vggNet)
+                TrainOrTest(net=vggNet, configurator=configurator, testOnly=testOnly)
     if net_list:
+        # 可视化训练结果，展示样本预测效果
         visualize_results(nets=net_list, configurator=configurator, num_samples=4)
     # 绘制结果图
     if mode:
