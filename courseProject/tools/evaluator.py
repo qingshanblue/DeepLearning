@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 import pandas as pd
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
 
 # 数据加载
 import os
@@ -105,9 +107,31 @@ def visualize_results(
     plt.close(figure)
 
 
-def test_full_performance(
-    net: Net, configurator: Configurator
-) -> tuple[float, dict[int, float], np.ndarray, np.ndarray, float, float]:
+def plot_confusion_matrix(all_labels, all_preds, save_path, model_name):
+    # 计算混淆矩阵
+    cm = confusion_matrix(all_labels, all_preds, normalize="true")
+    # 设置画布大小
+    plt.figure(figsize=(20, 18))
+    # 绘制热力图
+    # annot=False 因为58类格子里写不下数字；cmap="Blues" 颜色越深代表数值越大
+    sns.heatmap(cm, annot=False, cmap="Blues", fmt="d")
+    plt.title(f"Confusion Matrix: {model_name}", fontsize=20)
+    plt.xlabel("Predicted Labels", fontsize=15)
+    plt.ylabel("True Labels", fontsize=15)
+    # 保存图片
+    plt.savefig(save_path, bbox_inches="tight")
+
+
+def test_full_performance(net: Net, configurator: Configurator) -> tuple[
+    float,
+    dict[int, float],
+    np.ndarray,
+    np.ndarray,
+    float,
+    float,
+    list[float],
+    list[float],
+]:
     # 设置模型为评估模式，关闭dropout和batchnorm的训练行为
     net.model.eval()
     all_probs = []
@@ -157,7 +181,7 @@ def test_full_performance(
         data_loader=configurator.test_loader,
         device=configurator.device,
     )
-    return mAP, all_aps, precision, recall, loss, acc
+    return mAP, all_aps, precision, recall, loss, acc, all_labels, all_probs
 
 
 def run_test(net: Net, configurator: Configurator) -> dict:
@@ -174,11 +198,13 @@ def run_test(net: Net, configurator: Configurator) -> dict:
         print("未找到最佳模型文件，请先训练模型。")
         return {}
     # 在测试集上计算完整的性能指标，包括mAP、各类别AP、精确率、召回率等
-    mAP, APs, precision, recall, loss, acc = test_full_performance(
-        net=net,
-        configurator=configurator,
+    mAP, APs, precision, recall, loss, acc, all_labels, all_probs = (
+        test_full_performance(
+            net=net,
+            configurator=configurator,
+        )
     )
-    # 绘图
+    # 绘PR图
     figure, axes = plt.subplots(1, 2, figsize=(20, 7))
     figure.suptitle(
         f"Performance Test: {net.name}\nmAP:{mAP:.4f}, loss:{loss:.4f}, acc:{acc:.4f}",
@@ -202,9 +228,26 @@ def run_test(net: Net, configurator: Configurator) -> dict:
     os.makedirs(  # 确保figures目录存在
         f"figures/{net.name}/{configurator.desc}", exist_ok=True
     )
-    figure.savefig(f"figures/{net.name}/{configurator.desc}_PR&AP.png")
+    figure.savefig(f"figures/{net.name}/{configurator.desc}/PR&AP.png")
     # 输出关键性能指标供用户快速查看模型表现
     print(f"测试集的: mAP:{mAP:.4f}, loss:{loss:.4f}, acc:{acc:.4f}")
+
+    # 绘制混淆矩阵
+    if isinstance(all_probs, list):
+        all_probs_stacked = np.concatenate(all_probs, axis=0)
+    else:
+        all_probs_stacked = all_probs
+    pred_labels = np.argmax(all_probs_stacked, axis=1)
+    if isinstance(all_labels, list):
+        true_labels = np.concatenate(all_labels, axis=0)
+    else:
+        true_labels = all_labels
+    plot_confusion_matrix(
+        all_labels=true_labels,
+        all_preds=pred_labels,
+        save_path=f"figures/{net.name}/{configurator.desc}/confusionMatrix.png",
+        model_name=net.name,
+    )
     return {
         "mAP": mAP,
         "APs": APs,

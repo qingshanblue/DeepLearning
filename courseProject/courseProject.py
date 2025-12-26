@@ -110,3 +110,4 @@ if __name__ == "__main__":
     if mode:
         plt.tight_layout()
         plt.show()
+        plt.close("all")
