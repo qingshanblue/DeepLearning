@@ -152,7 +152,7 @@ def run_test(net: Net, configurator: Configurator, model_name: str) -> dict:
         num_classes=configurator.num_classes,
     )
     # 绘图
-    fig, axes = plt.subplots(1, 2, figsize=(20, 7), squeeze=False)
+    fig, axes = plt.subplots(1, 2, figsize=(20, 7))
     fig.suptitle(f"Performance Evaluation: {model_name}", fontsize=16)
     # 绘制 PR 曲线
     axes[0].plot(recall, precision, label=f"mAP={mAP:.4f}", color="blue")

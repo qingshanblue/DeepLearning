@@ -123,7 +123,7 @@ def run_train(net: Net, configurator: Configurator, model_name: str) -> dict:
         model_name=model_name,
     )
     # 绘制结果图
-    figure, axes = plt.subplots(1, 2, figsize=(10, 5), squeeze=False)
+    figure, axes = plt.subplots(1, 2, figsize=(10, 5))
     figure.suptitle(f"{model_name} Training and Validation Results")
     axes[0].plot(train_loss_template, label="train_loss")
     axes[0].plot(valid_loss_template, label="valid_loss")
