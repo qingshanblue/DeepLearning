@@ -1,20 +1,20 @@
 # 延迟类型注解检查
 from __future__ import annotations
 
-# 主要计算
+# 计算
 import torch
 import torch.nn as nn
 import pandas as pd
 
-# 数据加载
+# 数据
 import os
 from torch.utils.data import DataLoader
 
-# 其他辅助
+# 辅助
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
-# 用户实现
+# 用户
 from tools.configurator import Configurator
 from tools.evaluator import validate
 from nets.net import Net
@@ -105,7 +105,7 @@ def train(
                 f"checkpoints/{net.name}/{configurator.desc}/best_model.pth",
             )
             tqdm_epoch.write(
-                f"Epoch {epoch}: 新最佳模型准确度 = {best_acc:.4f} 已保存!"
+                f"Epoch {epoch}: 新最佳{net.name}模型权重已保存! 模型验证准确度={best_acc:.4f}"
             )
     tqdm_epoch.close()
     # 保存日志

@@ -1,10 +1,10 @@
 # 延迟类型注解检查
 from __future__ import annotations
 
-# 主要计算
+# 计算
 import torch
 
-# 用户实现
+# 用户
 from tools.dataloader import MyDataLoader
 
 
@@ -41,7 +41,7 @@ class Configurator:
             # GPU不可用时回退到CPU
             self.device = torch.device("cpu")
 
-        # 配置数据加载相关参数
+        # 配置数据相关参数
         root_dir = "./data"
         images_size = self.image_size  # 统一调整图像尺寸以适应模型输入
         train_proportion = 0.7  # 70%数据用于训练

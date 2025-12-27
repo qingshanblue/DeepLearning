@@ -1,25 +1,28 @@
 # 延迟类型注解检查
 from __future__ import annotations
 
-# 主要计算
+# 计算
 import torch
 import torch.nn as nn
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
 
-# 数据加载
+# 数据
 import os
 from torch.utils.data import DataLoader
-from sklearn.metrics import precision_recall_curve, average_precision_score
+from sklearn.metrics import (
+    precision_recall_curve,
+    average_precision_score,
+    confusion_matrix,
+)
 from sklearn.preprocessing import label_binarize
 
-# 其他辅助
+# 辅助
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
-# 用户实现
+# 用户
 from tools.configurator import Configurator
 from nets.net import Net
 
@@ -81,10 +84,14 @@ def visualize_results(
         # 反归一化，否则图片颜色是错的
         img = np.clip(img * 0.5 + 0.5, 0, 1)
 
+        # 搬移图片到显存参与后续计算
+        input_img = images[i].unsqueeze(0).to(configurator.device)
         for j, net_obj in enumerate(nets):
+            # 搬移模型到显存参与后续计算
+            net_obj.model.to(device=configurator.device)
             net_obj.model.eval()
             with torch.no_grad():
-                pred = net_obj.model(images[i].unsqueeze(0).to(configurator.device))
+                pred = net_obj.model(input_img)
                 pred_idx = pred.argmax(dim=1).item()
 
             ax = axes[i, j]
@@ -98,27 +105,40 @@ def visualize_results(
                 fontsize=9,
             )
             ax.axis("off")
+            # 腾出显存
+            net_obj.model.to(device="cpu")
     # 保存图片
     listName = [f"{i.name}" for i in nets]
     os.makedirs(  # 确保figures目录存在
         f"figures/compare/{configurator.desc}", exist_ok=True
     )
     figure.savefig(f"figures/compare/{configurator.desc}/{listName}.png")
-    plt.close(figure)
 
 
-def plot_confusion_matrix(all_labels, all_preds, save_path, model_name):
-    # 计算混淆矩阵
-    cm = confusion_matrix(all_labels, all_preds, normalize="true")
-    # 设置画布大小
-    plt.figure(figsize=(20, 18))
+def plot_confusion_matrix(all_labels, all_preds, save_path, model_name, num_classes=58):
+    cm = confusion_matrix(
+        all_labels,
+        all_preds,
+        labels=range(num_classes),
+        normalize="true",  # 加上归一化，方便观察
+    )
+
+    plt.figure(figsize=(22, 18))  # 大画布，容纳 58 个标签
+
     # 绘制热力图
-    # annot=False 因为58类格子里写不下数字；cmap="Blues" 颜色越深代表数值越大
-    sns.heatmap(cm, annot=False, cmap="Blues", fmt="d")
-    plt.title(f"Confusion Matrix: {model_name}", fontsize=20)
+    sns.heatmap(
+        cm,
+        annot=False,
+        cmap="Blues",
+        xticklabels=[str(i) for i in range(num_classes)],  # 转换为字符串列表
+        yticklabels=[str(i) for i in range(num_classes)],  # 转换为字符串列表
+    )
+    plt.title(
+        f"Normalized Confusion Matrix: {model_name} (Full 58 Classes)", fontsize=20
+    )
     plt.xlabel("Predicted Labels", fontsize=15)
     plt.ylabel("True Labels", fontsize=15)
-    # 保存图片
+
     plt.savefig(save_path, bbox_inches="tight")
 
 
@@ -129,8 +149,8 @@ def test_full_performance(net: Net, configurator: Configurator) -> tuple[
     np.ndarray,
     float,
     float,
-    list[float],
-    list[float],
+    np.ndarray,
+    np.ndarray,
 ]:
     # 设置模型为评估模式，关闭dropout和batchnorm的训练行为
     net.model.eval()
@@ -181,7 +201,7 @@ def test_full_performance(net: Net, configurator: Configurator) -> tuple[
         data_loader=configurator.test_loader,
         device=configurator.device,
     )
-    return mAP, all_aps, precision, recall, loss, acc, all_labels, all_probs
+    return mAP, all_aps, precision, recall, loss, acc, labels, probs
 
 
 def run_test(net: Net, configurator: Configurator) -> dict:
@@ -198,11 +218,9 @@ def run_test(net: Net, configurator: Configurator) -> dict:
         print("未找到最佳模型文件，请先训练模型。")
         return {}
     # 在测试集上计算完整的性能指标，包括mAP、各类别AP、精确率、召回率等
-    mAP, APs, precision, recall, loss, acc, all_labels, all_probs = (
-        test_full_performance(
-            net=net,
-            configurator=configurator,
-        )
+    mAP, APs, precision, recall, loss, acc, labels, probs = test_full_performance(
+        net=net,
+        configurator=configurator,
     )
     # 绘PR图
     figure, axes = plt.subplots(1, 2, figsize=(20, 7))
@@ -233,17 +251,9 @@ def run_test(net: Net, configurator: Configurator) -> dict:
     print(f"测试集的: mAP:{mAP:.4f}, loss:{loss:.4f}, acc:{acc:.4f}")
 
     # 绘制混淆矩阵
-    if isinstance(all_probs, list):
-        all_probs_stacked = np.concatenate(all_probs, axis=0)
-    else:
-        all_probs_stacked = all_probs
-    pred_labels = np.argmax(all_probs_stacked, axis=1)
-    if isinstance(all_labels, list):
-        true_labels = np.concatenate(all_labels, axis=0)
-    else:
-        true_labels = all_labels
+    pred_labels = np.argmax(probs, axis=1)
     plot_confusion_matrix(
-        all_labels=true_labels,
+        all_labels=labels,
         all_preds=pred_labels,
         save_path=f"figures/{net.name}/{configurator.desc}/confusionMatrix.png",
         model_name=net.name,

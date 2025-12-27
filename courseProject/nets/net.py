@@ -1,12 +1,12 @@
 # 延迟类型注解检查
 from __future__ import annotations
 
-# 主要计算
+# 计算
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# 用户实现
+# 用户
 from tools.configurator import Configurator
 
 
@@ -23,7 +23,10 @@ class Net:
             lr=configurator.learning_rate,
             weight_decay=configurator.weight_decay,
         )
+        # 记录模型名称以供路径用于保存
         self.name = self.__class__.__name__
+        # 记录模型参数量以对比
+        self.yields = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
     class Model(nn.Module):
         # 抽象模型类，子类必须实现具体的网络结构

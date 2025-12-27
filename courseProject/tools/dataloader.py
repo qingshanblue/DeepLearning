@@ -1,11 +1,11 @@
 # 延迟类型注解检查
 from __future__ import annotations
 
-# 主要计算
+# 计算
 import torch
 import numpy as np
 
-# 数据加载
+# 数据
 import os
 import csv
 from PIL import Image

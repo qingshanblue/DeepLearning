@@ -1,12 +1,12 @@
 # 延迟类型注解检查
 from __future__ import annotations
 
-# 主要计算
+# 计算
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# 用户实现
+# 用户
 from nets.net import Net
 
 
@@ -16,9 +16,8 @@ class VGGNet(Net):
             self,
             chns_in: int = 3,
             num_classes: int = 58,
-            # VGG 经典的通道增长序列: 64 -> 128 -> 256 -> 512
-            chns: list[int] = [64, 128, 256, 512],
-            feats_mid: int = 4096,  # 保持和 AlexNet 一致的 4096 维
+            chns: list[int] = [32, 64, 128, 256],
+            feats_mid: int = 512,
             dropout_rate: float = 0.5,
         ) -> None:
             super().__init__()

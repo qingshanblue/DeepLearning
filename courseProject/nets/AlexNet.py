@@ -1,12 +1,12 @@
 # 延迟类型注解检查
 from __future__ import annotations
 
-# 主要计算
+# 计算
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# 用户实现
+# 用户
 from nets.net import Net
 
 

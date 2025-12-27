@@ -1,7 +1,10 @@
-# 其他辅助
+# 计算
+import torch
+
+# 辅助
 import matplotlib.pyplot as plt
 
-# 用户实现
+# 用户
 from tools.configurator import Configurator
 from tools.trainer import run_train
 from tools.evaluator import run_test, visualize_results
@@ -12,6 +15,7 @@ from nets.VGGNet import VGGNet
 
 
 def TrainOrTest(net: Net, configurator: Configurator, testOnly: bool = False) -> None:
+    print(f"{net.name}模型参数量:{net.yields/1000000:.4f}M")
     if not testOnly:
         run_train(
             net=net,
@@ -22,6 +26,8 @@ def TrainOrTest(net: Net, configurator: Configurator, testOnly: bool = False) ->
         net=net,
         configurator=configurator,
     )
+    # 腾出显存
+    net.model.to("cpu")
 
 
 # 程序入口，主函数：
@@ -73,34 +79,37 @@ if __name__ == "__main__":
         accumulation_steps=1,
         seed=114514,
     )
-    # 创建模型，及保存使用了哪些模型的列表
+    # 保存使用了哪些模型的列表
     net_list = []
-    residNet = ResidualNet(configurator=configurator)
-    alexNet = AlexNet(configurator=configurator)
-    vggNet = VGGNet(configurator=configurator)
     for m in mode:  # 根据输入执行操作
         # 判断是否仅评估模式（10+表示仅评估）
         testOnly = True if m >= 10 else False
         match m:
             case 0 | 10:
                 # 执行所有模型的训练或评估
+                residNet = ResidualNet(configurator=configurator)
                 net_list.append(residNet)
                 TrainOrTest(net=residNet, configurator=configurator, testOnly=testOnly)
+                alexNet = AlexNet(configurator=configurator)
                 net_list.append(alexNet)
                 TrainOrTest(net=alexNet, configurator=configurator, testOnly=testOnly)
+                vggNet = VGGNet(configurator=configurator)
                 net_list.append(vggNet)
                 TrainOrTest(net=vggNet, configurator=configurator, testOnly=testOnly)
                 break
             case 1 | 11:
                 # 执行ResidualNet的训练或评估
+                residNet = ResidualNet(configurator=configurator)
                 net_list.append(residNet)
                 TrainOrTest(net=residNet, configurator=configurator, testOnly=testOnly)
             case 2 | 12:
                 # 执行AlexNet的训练或评估
+                alexNet = AlexNet(configurator=configurator)
                 net_list.append(alexNet)
                 TrainOrTest(net=alexNet, configurator=configurator, testOnly=testOnly)
             case 3 | 13:
                 # 执行VGGNet的训练或评估
+                vggNet = VGGNet(configurator=configurator)
                 net_list.append(vggNet)
                 TrainOrTest(net=vggNet, configurator=configurator, testOnly=testOnly)
     if net_list:
@@ -111,3 +120,4 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.show()
         plt.close("all")
+        torch.cuda.empty_cache()
