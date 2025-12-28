@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     # 训练、评估模型
     # 配置训练参数，包括类别数、学习率、权重衰减等
-    configurator = Configurator(
+    configurator0 = Configurator(
         num_classes=58,
         image_size=(64, 64),
         learning_rate=1e-3,
@@ -79,6 +79,17 @@ if __name__ == "__main__":
         accumulation_steps=1,
         seed=114514,
     )
+    configurator1 = Configurator(
+        num_classes=58,
+        image_size=(32, 32),
+        learning_rate=1e-3,
+        weight_decay=1e-4,
+        num_epochs=32,
+        batch_size=128,
+        accumulation_steps=1,
+        seed=114514,
+    )
+    configurator = configurator0
     # 保存使用了哪些模型的列表
     net_list = []
     for m in mode:  # 根据输入执行操作

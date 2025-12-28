@@ -34,14 +34,26 @@ def plot_category_distribution(root_dir: str) -> None:
     plt.ylabel("Number of Images")
     plt.title("Image Distribution per Category")
     plt.xticks(rotation=45)
-    
+
     # 在每个柱子上显示具体数值
     for bar, count in zip(bars, counts):
-        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), str(count),
-                 ha='center', va='bottom')
+        plt.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            str(count),
+            ha="center",
+            va="bottom",
+        )
 
     plt.tight_layout()
     plt.show()
-    
+
+
 if __name__ == "__main__":
     plot_category_distribution("./data/")
+    # import torch
+
+    # # 获取 CUDA 版本字符串
+    # import torch
+    # print(torch.version.cuda)
+    # print(f"完整版本信息: {torch.__version__}")
