@@ -66,7 +66,7 @@ class MyDataLoader(Dataset):
         def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor]:
             real_idx = self.indices[idx]
             image, label = self.dataset[real_idx]
-            if self.transform:
+            if self.transform is not None:
                 image = self.transform(image)
             return image, label
 
