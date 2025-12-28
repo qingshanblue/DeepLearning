@@ -42,7 +42,7 @@ class Configurator:
             self.device = torch.device("cpu")
 
         # 配置数据相关参数
-        root_dir = "./courseProject/data"
+        root_dir = "./data"
         images_size = self.image_size  # 统一调整图像尺寸以适应模型输入
         train_proportion = 0.7  # 70%数据用于训练
         valid_proportion = 0.2  # 20%数据用于验证，剩余10%用于测试
